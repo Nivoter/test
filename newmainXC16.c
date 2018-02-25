@@ -41,13 +41,30 @@
 #include <xc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "uart.h"
+
+volatile int x;
+volatile int y;
+volatile long r=0;;
+
 
 void __attribute__((__interrupt__, auto_psv)) _U1RXInterrupt(void)
 {
-    _U1RXIF = 0;	// manually cleared U2RX Interrupt flag
+    // x[y] = U1RXREG; // Receiveing data
     LATDbits.LATD7 =1;
+    while(r<1000000)
+    {
+        r++;
+    }
+    r=0;
+    _U1RXIF = 0;	// manually cleared U2RX Interrupt flag
 }
+
+void __attribute__((__interrupt__, auto_psv)) _U1XISELInterrupt(void)
+{
+    //U1TXREG = x[y]; //Transmitting data
+    LATDbits.LATD7 =0;
+}
+
 void UART_init(void)
 {
      // Unlock Registers
