@@ -1,0 +1,108 @@
+/* 
+ * File:   UART.c
+ * Author: user
+ *
+ * Created on 7 мая 2018 г., 15:33
+ */
+
+// CONFIG3
+#pragma config WPFP = WPFP511           // Write Protection Flash Page Segment Boundary (Highest Page (same as page 170))
+#pragma config WPDIS = WPDIS            // Segment Write Protection Disable bit (Segmented code protection disabled)
+#pragma config WPCFG = WPCFGDIS         // Configuration Word Code Page Protection Select bit (Last page(at the top of program memory) and Flash configuration words are not protected)
+#pragma config WPEND = WPENDMEM         // Segment Write Protection End Page Select bit (Write Protect from WPFP to the last page of memory)
+
+// CONFIG2
+#pragma config POSCMOD = HS            // Primary Oscillator Select (HS oscillator mode selected)
+#pragma config DISUVREG = OFF           // Internal USB 3.3V Regulator Disable bit (Regulator is disabled)
+#pragma config IOL1WAY = ON             // IOLOCK One-Way Set Enable bit (Write RP Registers Once)
+#pragma config OSCIOFNC = ON            // Primary Oscillator Output Function (OSCO functions as port I/O (RC15))
+#pragma config FCKSM = CSDCMD           // Clock Switching and Monitor (Both Clock Switching and Fail-safe Clock Monitor are disabled)
+#pragma config FNOSC = PRI              // Oscillator Select (Primary oscillator (XT, HS, EC))
+#pragma config PLL_96MHZ = ON           // 96MHz PLL Disable (Enabled)
+#pragma config PLLDIV = DIV12           // USB 96 MHz PLL Prescaler Select bits (Oscillator input divided by 12 (48MHz input))
+#pragma config IESO = ON                // Internal External Switch Over Mode (IESO mode (Two-speed start-up) enabled)
+
+// CONFIG1
+#pragma config WDTPS = PS32768          // Watchdog Timer Postscaler (1:32,768)
+#pragma config FWPSA = PR128            // WDT Prescaler (Prescaler ratio of 1:128)
+#pragma config WINDIS = OFF             // Watchdog Timer Window (Standard Watchdog Timer enabled,(Windowed-mode is disabled))
+#pragma config FWDTEN = OFF             // Watchdog Timer Enable (Watchdog Timer is disabled)
+#pragma config ICS = PGx2               // Comm Channel Select (Emulator functions are shared with PGEC1/PGED1)
+#pragma config GWRP = OFF               // General Code Segment Write Protect (Writes to program memory are allowed)
+#pragma config GCP = OFF                // General Code Segment Code Protect (Code protection is disabled)
+#pragma config JTAGEN = OFF              // JTAG Port Enable (JTAG port is enabled)
+
+#define FOSC 32000000 
+#define FCY FOSC/2 
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <xc.h>
+#include <stdint.h>
+#include <libpic30.h>
+
+void UART_INIT(void)
+{
+    RPINR18bits.U1RXR = 38; //RX RC1
+    RPOR1bits.RP3R=3; //TX  RD10
+    //MODE
+    U1MODEbits.UARTEN = 1;
+    U1MODEbits.BRGH=1;
+    //STATUS
+    U1STAbits.UTXEN = 1;
+    U1BRG = 34;
+    IEC0bits.U1RXIE = 1;
+}
+void put_char(char i)
+{
+   while(U1STAbits.UTXBF==1);
+   U1TXREG = i;
+}
+
+uint8_t flag=0;
+uint8_t flag1=0;
+uint8_t i=0;
+
+void __attribute__((__interrupt__, auto_psv)) _U1RXInterrupt(void)
+{
+    IFS0bits.U1RXIF = 0;
+    if(flag1==0)
+    {
+        flag=1;
+        i=U1RXREG;
+        put_char(' ');
+    }
+    flag1=1; //Запрет считывания
+//  IEC0bits.U1RXIE = 0;
+}
+/*
+char get_char(void)
+{
+    uint8_t i;
+    while(U1STAbits.URXDA==0);
+    i=U1RXREG;
+    put_char(' ');
+    return i;
+}
+*/
+
+int main(int argc, char** argv) 
+{
+    UART_INIT();
+    while(1)
+    {
+        if(flag==1)
+        {
+            flag=0;
+            put_char(i);
+        }
+        
+        
+        
+        flag1=0; //Разрешение считывания
+    }
+    
+    return (EXIT_SUCCESS);
+}
+
